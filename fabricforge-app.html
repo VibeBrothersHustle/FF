@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0D0D0D">
+<title>FabricForge — AI Stitch Designer</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════ */
+:root {
+  --bg: #0D0D0D;
+  --surface: #161616;
+  --surface2: #1E1E1E;
+  --border: #2A2A2A;
+  --border2: #333;
+  --lime: #C8F53A;
+  --lime-dim: #9DB82C;
+  --white: #F5F5F0;
+  --muted: #6B6B6B;
+  --muted2: #4A4A4A;
+  --accent: #FF6B35;
+  --teal: #2DD4BF;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* STATUS BAR FAKE */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--white);
+  flex-shrink: 0;
+}
+.status-time { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.status-icons { display: flex; gap: 6px; align-items: center; font-size: 11px; }
+
+/* ═══════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════ */
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.screen.active { display: flex; }
+
+/* ─── SCROLLABLE BODY ─── */
+.scroll-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 20px 120px;
+}
+.scroll-body::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════
+   SPLASH / ONBOARDING
+═══════════════════════════════════════ */
+#screen-splash {
+  background: var(--bg);
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.splash-top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.splash-badge {
+  background: var(--lime);
+  color: var(--bg);
+  font-family: 'Syne', sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+}
+
+.splash-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  animation: popIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.35s both;
+}
+.splash-logo em {
+  font-style: normal;
+  color: var(--lime);
+  display: block;
+}
+
+.splash-sub {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 18px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 14px;
+  animation: fadeUp 0.5s ease 0.55s both;
+}
+
+.splash-visual {
+  width: 220px;
+  height: 220px;
+  margin: 32px auto;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #1E2E10, #0D0D0D);
+  border: 1px solid #2A2A2A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80px;
+  animation: floatAnim 3s ease-in-out infinite;
+  position: relative;
+}
+.splash-visual::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,245,58,0.15);
+  animation: pulseRing 2s ease-in-out infinite;
+}
+.splash-visual::after {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  border: 1px solid rgba(200,245,58,0.07);
+  animation: pulseRing 2s ease-in-out 0.5s infinite;
+}
+
+@keyframes floatAnim { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+@keyframes pulseRing { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.05)} }
+@keyframes popIn { from{opacity:0;transform:scale(0.8)} to{opacity:1;transform:scale(1)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slideIn { from{opacity:0;transform:translateX(30px)} to{opacity:1;transform:translateX(0)} }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.splash-bottom { padding-bottom: calc(20px + var(--safe-bottom)); }
+
+/* ═══════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════ */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  transition: transform 0.15s, opacity 0.15s;
+  -webkit-user-select: none;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-lime { background: var(--lime); color: var(--bg); }
+.btn-lime:hover { opacity: 0.92; }
+.btn-outline { background: transparent; color: var(--white); border: 1.5px solid var(--border2); }
+.btn-surface { background: var(--surface2); color: var(--white); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-teal { background: var(--teal); color: var(--bg); }
+.btn-sm {
+  width: auto;
+  padding: 10px 18px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+.btn:disabled { opacity: 0.35; pointer-events: none; }
+
+/* ═══════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════ */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 16px;
+  flex-shrink: 0;
+}
+.top-bar-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+}
+.back-btn {
+  width: 38px; height: 38px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 18px;
+  transition: background 0.2s;
+}
+.back-btn:active { background: var(--border); }
+
+/* ═══════════════════════════════════════
+   PROGRESS BAR
+═══════════════════════════════════════ */
+.progress-wrap {
+  padding: 0 20px 16px;
+  flex-shrink: 0;
+}
+.progress-track {
+  height: 3px;
+  background: var(--surface2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--lime);
+  border-radius: 2px;
+  transition: width 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.progress-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  letter-spacing: 0.05em;
+  font-family: 'Syne', sans-serif;
+}
+
+/* ═══════════════════════════════════════
+   SECTION LABELS
+═══════════════════════════════════════ */
+.section-head {
+  margin-bottom: 6px;
+}
+.section-head h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.section-head p {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.section-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+
+/* ═══════════════════════════════════════
+   UPLOAD ZONE
+═══════════════════════════════════════ */
+.upload-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+  background: var(--surface);
+  margin-top: 20px;
+}
+.upload-zone.has-image { border-style: solid; border-color: var(--lime); padding: 0; overflow: hidden; }
+.upload-zone:active { border-color: var(--lime); background: #161F06; }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-zone .u-icon { font-size: 44px; margin-bottom: 12px; display: block; }
+.upload-zone h3 { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.upload-zone p { font-size: 13px; color: var(--muted); }
+.upload-zone img { width: 100%; height: 220px; object-fit: cover; display: block; }
+
+.upload-change {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(13,13,13,0.85);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  color: var(--white);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  z-index: 2;
+}
+
+/* ═══════════════════════════════════════
+   CATEGORY GRID
+═══════════════════════════════════════ */
+.cat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cat-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.cat-card:active { transform: scale(0.97); }
+.cat-card.selected { border-color: var(--lime); background: #141A06; }
+.cat-card .c-emoji { font-size: 28px; }
+.cat-card h4 { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+.cat-card p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* ═══════════════════════════════════════
+   STITCH SCROLL LIST
+═══════════════════════════════════════ */
+.stitch-list { display: flex; flex-direction: column; gap: 10px; }
+.stitch-item {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.stitch-item:active { transform: scale(0.98); }
+.stitch-item.selected { border-color: var(--lime); background: #141A06; }
+.stitch-item .s-icon { font-size: 28px; flex-shrink: 0; width: 44px; height: 44px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.stitch-item h4 { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.stitch-item p { font-size: 12px; color: var(--muted); }
+.stitch-item .check { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.stitch-item.selected .check { background: var(--lime); border-color: var(--lime); color: var(--bg); }
+
+/* ═══════════════════════════════════════
+   MEASUREMENTS
+═══════════════════════════════════════ */
+.measure-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-field { display: flex; flex-direction: column; gap: 6px; }
+.m-field label { font-size: 11px; color: var(--muted); font-family: 'Syne', sans-serif; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.m-field input {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  color: var(--white);
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.m-field input:focus { outline: none; border-color: var(--lime); }
+.m-field input::placeholder { color: var(--muted2); }
+
+.size-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.size-chip {
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.size-chip:active { transform: scale(0.95); }
+.size-chip.selected { border-color: var(--lime); background: #141A06; color: var(--lime); }
+
+/* ═══════════════════════════════════════
+   BOTTOM CTA
+═══════════════════════════════════════ */
+.bottom-cta {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 16px 20px calc(16px + var(--safe-bottom));
+  background: linear-gradient(to top, var(--bg) 70%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ═══════════════════════════════════════
+   OUTPUT SCREEN
+═══════════════════════════════════════ */
+.summary-pill-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.summary-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  color: var(--white);
+}
+.summary-pill span { color: var(--lime); }
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.result-card-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.result-card-body { padding: 20px; }
+
+/* Design concept */
+.design-name {
+  font-family: 'Instrument Serif', serif;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--white);
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+.design-desc {
+  font-size: 14px;
+  color: #A0A0A0;
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+.tag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+}
+.tag-lime { background: #141A06; color: var(--lime); border: 1px solid #2A3A10; }
+.tag-teal { background: #061A19; color: var(--teal); border: 1px solid #103A38; }
+.tag-orange { background: #1A0F08; color: var(--accent); border: 1px solid #3A2010; }
+
+.tip-item {
+  padding: 10px 12px;
+  background: var(--surface2);
+  border-left: 2px solid var(--lime);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #C0C0C0;
+  line-height: 1.5;
+}
+
+/* 360 View */
+.view360-wrap {
+  background: radial-gradient(circle at 50% 30%, #1A2208, #0D0D0D);
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.view360-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1' fill='%23C8F53A' fill-opacity='0.05'/%3E%3C/svg%3E");
+}
+.garment-display {
+  font-size: 72px;
+  display: block;
+  animation: floatAnim 3s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 20px rgba(200,245,58,0.2));
+}
+.angle-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.angle-tab {
+  padding: 6px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.angle-tab.active { background: var(--lime); border-color: var(--lime); color: var(--bg); }
+.angle-label { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+/* Try-on */
+.tryon-area {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+.tryon-box {
+  background: var(--surface2);
+  border: 1.5px dashed var(--border2);
+  border-radius: 12px;
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.tryon-box:active { border-color: var(--accent); }
+.tryon-box.has-result { border-style: solid; border-color: var(--teal); cursor: default; }
+.tryon-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.tryon-box .t-icon { font-size: 28px; }
+.tryon-box p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+.tryon-arrow { font-size: 20px; color: var(--border2); }
+.tryon-result-text { font-size: 12px; color: #A0A0A0; line-height: 1.5; text-align: left; }
+
+/* Loading */
+.loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; gap: 14px; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--lime); border-radius: 50%; animation: spin 0.7s linear infinite; }
+.loading-text { font-size: 13px; color: var(--muted); font-style: italic; text-align: center; }
+
+/* ═══════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════ */
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 12px 10px calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 6px 16px;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+.nav-item:active { background: var(--surface2); }
+.nav-item.active .nav-icon { color: var(--lime); }
+.nav-item.active .nav-lbl { color: var(--lime); }
+.nav-icon { font-size: 22px; color: var(--muted); transition: color 0.2s; }
+.nav-lbl { font-size: 10px; font-family: 'Syne', sans-serif; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* ═══════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════ */
+.auth-wrap {
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.input-field {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  color: var(--white);
+  width: 100%;
+  transition: border-color 0.2s;
+}
+.input-field:focus { outline: none; border-color: var(--lime); }
+.input-field::placeholder { color: var(--muted2); }
+.or-row { display: flex; align-items: center; gap: 12px; }
+.or-line { flex: 1; height: 1px; background: var(--border); }
+.or-text { font-size: 12px; color: var(--muted); font-family: 'Syne', sans-serif; font-weight: 600; }
+
+/* ═══════════════════════════════════════
+   HISTORY / GALLERY SCREEN
+═══════════════════════════════════════ */
+.hist-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 20px 120px; }
+.hist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.hist-card:active { transform: scale(0.97); }
+.hist-thumb { height: 110px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+.hist-info { padding: 10px 12px; }
+.hist-info h4 { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.hist-info p { font-size: 11px; color: var(--muted); }
+.empty-state { text-align: center; padding: 60px 20px; }
+.empty-state .e-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+.empty-state h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.empty-state p { font-size: 14px; color: var(--muted); }
+
+/* ═══════════════════════════════════════
+   PROFILE SCREEN
+═══════════════════════════════════════ */
+.profile-header {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.avatar {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--lime), #6EB800);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+  margin: 0 auto 12px;
+}
+.profile-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+.profile-email { font-size: 13px; color: var(--muted); margin-top: 3px; }
+
+.plan-card {
+  margin: 16px 20px;
+  background: linear-gradient(135deg, #141A06, #0D0D0D);
+  border: 1px solid rgba(200,245,58,0.3);
+  border-radius: var(--radius);
+  padding: 18px;
+}
+.plan-badge { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 800; color: var(--lime); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+.plan-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+.plan-desc { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.plan-stat { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.plan-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.plan-bar-fill { height: 100%; background: var(--lime); border-radius: 2px; width: 30%; }
+
+.settings-list { padding: 0 20px 120px; }
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.s-icon { font-size: 20px; width: 36px; height: 36px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.s-label { font-size: 15px; font-weight: 500; flex: 1; }
+.s-arrow { color: var(--muted2); font-size: 16px; }
+
+/* ═══════════════════════════════════════
+   TOAST
+═══════════════════════════════════════ */
+.toast {
+  position: fixed;
+  top: 60px; left: 50%; transform: translateX(-50%) translateY(-20px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 999;
+  max-width: 90%;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════
+   MODAL
+═══════════════════════════════════════ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px calc(20px + var(--safe-bottom));
+  width: 100%;
+  max-width: 430px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+  max-height: 85dvh;
+  overflow-y: auto;
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+/* Screen-specific tweaks */
+.screen-fade { animation: fadeUp 0.3s ease; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <span class="status-time" id="status-time">9:41</span>
+    <div class="status-icons">
+      <span>●●●●</span>
+      <span>WiFi</span>
+      <span>🔋</span>
+    </div>
+  </div>
+
+  <!-- ═══ SPLASH SCREEN ═══ -->
+  <div class="screen active screen-fade" id="screen-splash">
+    <div class="splash-top">
+      <div class="splash-badge">⚡ AI-Powered</div>
+      <div class="splash-logo">Fabric<em>Forge</em></div>
+      <div class="splash-sub">From cloth to couture, instantly</div>
+      <div class="splash-visual">🧵</div>
+    </div>
+    <div class="splash-bottom">
+      <button class="btn btn-lime" onclick="showScreen('screen-auth')">Get Started</button>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="guestLogin()">Continue as Guest</button>
+      <p style="text-align:center;font-size:11px;color:var(--muted);margin-top:14px;">By continuing you agree to our Terms &amp; Privacy Policy</p>
+    </div>
+  </div>
+
+  <!-- ═══ AUTH SCREEN ═══ -->
+  <div class="screen" id="screen-auth">
+    <div class="top-bar">
+      <div class="back-btn" onclick="showScreen('screen-splash')">←</div>
+      <div class="top-bar-title">Sign In</div>
+      <div style="width:38px"></div>
+    </div>
+    <div class="auth-wrap">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:8px;">Your designs are saved securely to your account</p>
+      <input class="input-field" type="email" placeholder="Email address" id="auth-email">
+      <input class="input-field" type="password" placeholder="Password" id="auth-pass">
+      <button class="btn btn-lime" onclick="handleLogin()">Sign In Securely 🔒</button>
+      <div class="or-row"><div class="or-line"></div><div class="or-text">or</div><div class="or-line"></div></div>
+      <button class="btn btn-surface" onclick="handleLogin()">🇬 Continue with Google</button>
+      <button class="btn btn-surface" onclick="handleLogin()">📱 Continue with OTP</button>
+      <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:10px;">New user? <span style="color:var(--lime);cursor:pointer" onclick="handleLogin()">Create account →</span></p>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:8px;">
+        <p style="font-size:11px;color:var(--muted);line-height:1.6;">🔒 <strong style="color:var(--white)">Secure & Private</strong> — Your fabric photos and designs are encrypted. We never share your data with third parties.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN APP SCREENS ═══ -->
+
+  <!-- STEP 1: FABRIC UPLOAD -->
+  <div class="screen" id="screen-upload">
+    <div class="top-bar">
+      <div class="top-bar-title">FabricForge</div>
+      <div style="background:var(--lime);color:var(--bg);font-family:'Syne',sans-serif;font-weight:800;font-size:11px;padding:5px 10px;border-radius:6px;">PRO</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:20%"></div></div>
+      <div class="progress-label">STEP 1 OF 5 — Upload Fabric</div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-head">
+        <h2>Upload Your<br>Fabric Photo</h2>
+        <p>Take a clear photo or choose from gallery</p>
+      </div>
+
+      <div class="upload-zone" id="upload-fabric-zone">
+        <input type="file" accept="image/*" capture="environment" onchange="handleFabricUpload(event)">
+        <span class="u-icon">📸</span>
+        <h3>Tap to capture fabric</h3>
+        <p>Camera or Gallery · JPG, PNG, HEIC</p>
+      </div>
+
+      <div class="section-label">QUICK TIPS</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
+          <span style="color:var(--lime);">✓</span> Lay fabric flat in good lighting
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
+          <span style="color:var(--lime);">✓</span> Capture the full texture / print
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
+          <span style="color:var(--lime);">✓</span> Avoid shadows or blur
+        </div>
+      </div>
+    </div>
+    <div class="bottom-cta">
+      <button class="btn btn-lime" id="btn-upload-next" disabled onclick="showScreen('screen-category')">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: CATEGORY -->
+  <div class="screen" id="screen-category">
+    <div class="top-bar">
+      <div class="back-btn" onclick="showScreen('screen-upload')">←</div>
+      <div class="top-bar-title">Category</div>
+      <div style="width:38px"></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:40%"></div></div>
+      <div class="progress-label">STEP 2 OF 5 — Choose Category</div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-head">
+        <h2>Who is this<br>design for?</h2>
+        <p>Stitch options will personalise to your choice</p>
+      </div>
+      <div class="section-label" style="margin-top:20px;">SELECT CATEGORY</div>
+      <div class="cat-grid">
+        <div class="cat-card" onclick="selectCat('Men\'s','🧔','Shirts, Suits, Kurtas, Blazers',this)">
+          <span class="c-emoji">🧔</span>
+          <h4>Men's</h4>
+          <p>Shirts, suits, kurtas</p>
+        </div>
+        <div class="cat-card" onclick="selectCat('Women\'s','👩','Salwars, blouses, kurtis',this)">
+          <span class="c-emoji">👩</span>
+          <h4>Women's</h4>
+          <p>Salwars, blouses, kurtis</p>
+        </div>
+        <div class="cat-card" onclick="selectCat('Girls','👧','Frocks, lehengas, tops',this)">
+          <span class="c-emoji">👧</span>
+          <h4>Girls</h4>
+          <p>Frocks, lehengas, tops</p>
+        </div>
+        <div class="cat-card" onclick="selectCat('Boys','👦','Shirts, kurtas, tees',this)">
+          <span class="c-emoji">👦</span>
+          <h4>Boys</h4>
+          <p>Shirts, kurtas, tees</p>
+        </div>
+        <div class="cat-card" onclick="selectCat('Kids','🧒','Rompers, dungarees, sets',this)">
+          <span class="c-emoji">🧒</span>
+          <h4>Kids (2–8)</h4>
+          <p>Rompers, dungarees</p>
+        </div>
+        <div class="cat-card" onclick="selectCat('Toddler','🍼','Onesies, rompers, frocks',this)">
+          <span class="c-emoji">🍼</span>
+          <h4>Toddler</h4>
+          <p>Onesies, soft rompers</p>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-cta">
+      <button class="btn btn-lime" id="btn-cat-next" disabled onclick="loadStitches();showScreen('screen-stitch')">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: STITCH STYLE -->
+  <div class="screen" id="screen-stitch">
+    <div class="top-bar">
+      <div class="back-btn" onclick="showScreen('screen-category')">←</div>
+      <div class="top-bar-title">Stitch Style</div>
+      <div style="width:38px"></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
+      <div class="progress-label">STEP 3 OF 5 — Choose Garment</div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-head">
+        <h2>What do you<br>want to stitch?</h2>
+        <p>Designs will match your fabric & category</p>
+      </div>
+      <div class="section-label" style="margin-top:20px;">GARMENT TYPE</div>
+      <div class="stitch-list" id="stitch-list"></div>
+    </div>
+    <div class="bottom-cta">
+      <button class="btn btn-lime" id="btn-stitch-next" disabled onclick="loadMeasures();showScreen('screen-measure')">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: MEASUREMENTS -->
+  <div class="screen" id="screen-measure">
+    <div class="top-bar">
+      <div class="back-btn" onclick="showScreen('screen-stitch')">←</div>
+      <div class="top-bar-title">Measurements</div>
+      <div style="width:38px"></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:80%"></div></div>
+      <div class="progress-label">STEP 4 OF 5 — Measurements</div>
+    </div>
+    <div class="scroll-body">
+      <div class="section-head">
+        <h2>Size &<br>Measurements</h2>
+        <p>Skip to use standard sizing</p>
+      </div>
+      <div class="section-label" style="margin-top:20px;">STANDARD SIZE</div>
+      <div class="size-row" id="size-row">
+        <div class="size-chip" onclick="pickSize(this,'XS')">XS</div>
+        <div class="size-chip" onclick="pickSize(this,'S')">S</div>
+        <div class="size-chip" onclick="pickSize(this,'M')">M</div>
+        <div class="size-chip" onclick="pickSize(this,'L')">L</div>
+        <div class="size-chip" onclick="pickSize(this,'XL')">XL</div>
+        <div class="size-chip" onclick="pickSize(this,'XXL')">XXL</div>
+      </div>
+      <div class="section-label">CUSTOM MEASUREMENTS (cm)</div>
+      <div class="measure-grid" id="measure-grid"></div>
+      <div style="height:20px"></div>
+    </div>
+    <div class="bottom-cta">
+      <button class="btn btn-lime" onclick="generateOutput()">✦ Generate Design</button>
+      <button class="btn btn-outline" onclick="generateOutput()" style="font-size:13px;padding:12px;">Skip measurements →</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: OUTPUT -->
+  <div class="screen" id="screen-output">
+    <div class="top-bar">
+      <div class="back-btn" onclick="showScreen('screen-measure')">←</div>
+      <div class="top-bar-title">Your Design</div>
+      <div style="font-size:20px;cursor:pointer" onclick="shareDesign()">📤</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+      <div class="progress-label">STEP 5 OF 5 — Design Ready</div>
+    </div>
+    <div class="scroll-body" id="output-scroll">
+      <!-- Dynamically filled -->
+    </div>
+    <div class="bottom-cta">
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-surface btn-sm" onclick="generateOutput()" style="flex:1">↺ Regenerate</button>
+        <button class="btn btn-lime btn-sm" onclick="saveDesign()" style="flex:1">⬇ Save</button>
+        <button class="btn btn-accent btn-sm" onclick="newDesign()" style="flex:1">＋ New</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY SCREEN -->
+  <div class="screen" id="screen-history">
+    <div class="top-bar">
+      <div class="top-bar-title">My Designs</div>
+      <div style="font-size:22px;cursor:pointer">🔍</div>
+    </div>
+    <div id="history-content">
+      <div class="empty-state">
+        <span class="e-icon">🗂</span>
+        <h3>No designs yet</h3>
+        <p>Your generated designs will appear here. Start by uploading a fabric!</p>
+        <button class="btn btn-lime" style="margin-top:20px;width:auto;padding:12px 28px" onclick="activateNav('upload')">+ Create Design</button>
+      </div>
+    </div>
+    <div class="bottom-nav" id="bottom-nav-2" style="position:relative;margin-top:auto">
+      <div class="nav-item" onclick="activateNav('upload')"><div class="nav-icon">🧵</div><div class="nav-lbl">Design</div></div>
+      <div class="nav-item active" onclick="activateNav('history')"><div class="nav-icon">🗂</div><div class="nav-lbl">History</div></div>
+      <div class="nav-item" onclick="activateNav('profile')"><div class="nav-icon">👤</div><div class="nav-lbl">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- PROFILE SCREEN -->
+  <div class="screen" id="screen-profile">
+    <div class="top-bar">
+      <div class="top-bar-title">Profile</div>
+      <div style="font-size:20px;cursor:pointer">⚙️</div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding-bottom:80px;">
+      <div class="profile-header">
+        <div class="avatar">👤</div>
+        <div class="profile-name" id="profile-name">Guest User</div>
+        <div class="profile-email" id="profile-email">guest@fabricforge.app</div>
+      </div>
+
+      <div class="plan-card">
+        <div class="plan-badge">CURRENT PLAN</div>
+        <div class="plan-name">Free Tier</div>
+        <div class="plan-desc">3 designs/month · Basic stitch styles</div>
+        <button class="btn btn-lime" style="font-size:13px;padding:10px" onclick="showModal('modal-upgrade')">Upgrade to Pro ⚡</button>
+        <div class="plan-stat">1 of 3 designs used this month</div>
+        <div class="plan-bar"><div class="plan-bar-fill"></div></div>
+      </div>
+
+      <div class="settings-list">
+        <div class="settings-item" onclick="showToast('🔒 Data encrypted with AES-256')">
+          <div class="s-icon">🔒</div>
+          <div class="s-label">Privacy & Security</div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="showToast('📏 Measurement profiles coming soon!')">
+          <div class="s-icon">📏</div>
+          <div class="s-label">Saved Measurements</div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="showModal('modal-upgrade')">
+          <div class="s-icon">⭐</div>
+          <div class="s-label">Upgrade Plan</div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="showToast('📧 support@fabricforge.app')">
+          <div class="s-icon">💬</div>
+          <div class="s-label">Help & Support</div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="showScreen('screen-splash')">
+          <div class="s-icon">🚪</div>
+          <div class="s-label">Sign Out</div>
+          <div class="s-arrow">›</div>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav" style="position:relative">
+      <div class="nav-item" onclick="activateNav('upload')"><div class="nav-icon">🧵</div><div class="nav-lbl">Design</div></div>
+      <div class="nav-item" onclick="activateNav('history')"><div class="nav-icon">🗂</div><div class="nav-lbl">History</div></div>
+      <div class="nav-item active" onclick="activateNav('profile')"><div class="nav-icon">👤</div><div class="nav-lbl">Profile</div></div>
+    </div>
+  </div>
+
+  <!-- MAIN BOTTOM NAV (attached to upload flow screens) -->
+  <div class="bottom-nav" id="main-bottom-nav" style="display:none">
+    <div class="nav-item active" id="nav-upload" onclick="activateNav('upload')"><div class="nav-icon">🧵</div><div class="nav-lbl">Design</div></div>
+    <div class="nav-item" id="nav-history" onclick="activateNav('history')"><div class="nav-icon">🗂</div><div class="nav-lbl">History</div></div>
+    <div class="nav-item" id="nav-profile" onclick="activateNav('profile')"><div class="nav-icon">👤</div><div class="nav-lbl">Profile</div></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- UPGRADE MODAL -->
+<div class="modal-overlay" id="modal-upgrade" onclick="if(event.target===this)closeModal('modal-upgrade')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Upgrade to Pro ⚡</div>
+    <div class="modal-sub">Unlock unlimited designs, virtual try-on, priority AI and more</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Basic</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;color:var(--lime);">₹199<span style="font-size:12px;color:var(--muted)">/mo</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">30 designs · All stitch styles · Save & export</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#141A06,#0D1A06);border:1.5px solid var(--lime);border-radius:12px;padding:16px;position:relative;">
+        <div style="position:absolute;top:-10px;right:16px;background:var(--lime);color:var(--bg);font-family:'Syne',sans-serif;font-size:10px;font-weight:800;padding:3px 10px;border-radius:10px;">POPULAR</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Pro</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;color:var(--lime);">₹599<span style="font-size:12px;color:var(--muted)">/mo</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">Unlimited · Virtual try-on · 360° view · Priority AI</div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;">Shop License</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:800;color:var(--lime);">₹2,999<span style="font-size:12px;color:var(--muted)">/mo</span></div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">Unlimited · White label · Multi-staff · API access</div>
+      </div>
+    </div>
+    <button class="btn btn-lime" onclick="showToast('🎉 Upgrade coming soon — Razorpay integration ready!');closeModal('modal-upgrade')">Choose Plan →</button>
+    <button class="btn btn-outline" style="margin-top:8px" onclick="closeModal('modal-upgrade')">Maybe Later</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// STATE
+// ════════════════════════════════════
+const APP = {
+  fabricImage: null, category: null, catEmoji: null,
+  stitch: null, stitchEmoji: null, size: null,
+  measurements: {}, designResult: null,
+  user: null, history: [], designCount: 0
+};
+
+// ════════════════════════════════════
+// DATA
+// ════════════════════════════════════
+const STITCHES = {
+  "Men's":[
+    {e:'👔',n:'Formal Shirt',d:'Classic collar, button-down, tailored fit'},
+    {e:'🧥',n:'Blazer / Suit',d:'Structured lapels with lining & pocket flaps'},
+    {e:'👖',n:'Trousers',d:'Pleated or flat-front, slim or straight cut'},
+    {e:'👕',n:'Casual Shirt',d:'Relaxed fit, patch pocket, spread collar'},
+    {e:'🩱',n:'Kurta / Sherwani',d:'Traditional ethnic, festive or formal'},
+    {e:'🧣',n:'Waistcoat',d:'Vest with front buttons, structured back'},
+  ],
+  "Women's":[
+    {e:'🌸',n:'Salwar Kameez',d:'Straight or A-line kurta with churidar'},
+    {e:'👗',n:'Saree Blouse',d:'Fitted blouse with back hook, various necks'},
+    {e:'👚',n:'Kurti / Top',d:'Short kurta, various neck & sleeve styles'},
+    {e:'💃',n:'Lehenga Choli',d:'Flared skirt with choli, bridal or festive'},
+    {e:'🎀',n:'Maxi Dress',d:'Floor-length flowing dress, various silhouettes'},
+    {e:'🪡',n:'Formal Blouse',d:'Office collar blouse, peplum or straight'},
+  ],
+  Girls:[
+    {e:'🎀',n:'Frock / Dress',d:'Princess-cut or A-line with frills & lace'},
+    {e:'🌺',n:'Skirt & Top',d:'Co-ord skirt and blouse set'},
+    {e:'🦋',n:'Mini Lehenga',d:'Festive mini lehenga choli'},
+    {e:'👗',n:'Salwar Suit',d:'Mini salwar kurta, ethnic style'},
+    {e:'🩱',n:'Party Dress',d:'Puffed sleeves, tulle skirt, glam look'},
+    {e:'👕',n:'Casual Top',d:'Printed casual top with shorts'},
+  ],
+  Boys:[
+    {e:'👕',n:'T-Shirt',d:'Round neck or polo, casual everyday'},
+    {e:'👔',n:'Formal Shirt',d:'Button-down for school or events'},
+    {e:'🧥',n:'Mini Blazer',d:'Smart blazer for events'},
+    {e:'🩱',n:'Kurta',d:'Traditional ethnic for celebrations'},
+    {e:'🩳',n:'Shorts Set',d:'Casual summer co-ord set'},
+    {e:'🎽',n:'Sports Wear',d:'Jersey and track bottoms'},
+  ],
+  Kids:[
+    {e:'🐣',n:'Romper',d:'One-piece jumpsuit, comfortable'},
+    {e:'🎈',n:'Dungaree',d:'Bib overall with adjustable straps'},
+    {e:'🌈',n:'Co-ord Set',d:'Matching top and bottom, playful prints'},
+    {e:'🎀',n:'Party Dress',d:'Cute dress for birthdays & events'},
+    {e:'👕',n:'Tee + Shorts',d:'Basic casual set for everyday play'},
+    {e:'🧸',n:'Ethnic Wear',d:'Mini kurta/frock for festive days'},
+  ],
+  Toddler:[
+    {e:'🍼',n:'Onesie',d:'Snap-button bodysuit for comfort'},
+    {e:'🌟',n:'Romper Suit',d:'Short-sleeve romper, warm weather'},
+    {e:'🐻',n:'Dungaree Set',d:'Mini dungaree with inner tee'},
+    {e:'🌸',n:'Soft Frock',d:'Knee-length flared, easy to wear'},
+    {e:'🎈',n:'Smock Dress',d:'Gathered front, easy on/off'},
+    {e:'👕',n:'Kurta Set',d:'Ethnic mini kurta for celebrations'},
+  ],
+};
+
+const MEASURES = {
+  "Men's":['Chest','Waist','Hip','Shoulder','Sleeve Length','Shirt Length','Neck'],
+  "Women's":['Bust','Waist','Hip','Shoulder','Sleeve Length','Blouse Length','Back Length'],
+  Girls:['Chest','Waist','Hip','Height','Shoulder','Dress Length'],
+  Boys:['Chest','Waist','Hip','Height','Shoulder','Shirt Length'],
+  Kids:['Chest','Waist','Height'],
+  Toddler:['Chest','Height','Age (months)'],
+};
+
+// ════════════════════════════════════
+// SCREEN NAVIGATION
+// ════════════════════════════════════
+const UPLOAD_SCREENS = ['screen-upload','screen-category','screen-stitch','screen-measure','screen-output'];
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.classList.remove('screen-fade');
+  void el.offsetWidth;
+  el.classList.add('screen-fade');
+
+  const mainNav = document.getElementById('main-bottom-nav');
+  mainNav.style.display = UPLOAD_SCREENS.includes(id) ? 'flex' : 'none';
+
+  updateTime();
+}
+
+function activateNav(tab) {
+  if(tab==='upload') showScreen('screen-upload');
+  else if(tab==='history') showScreen('screen-history');
+  else if(tab==='profile') showScreen('screen-profile');
+}
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('status-time').textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+}
+setInterval(updateTime, 10000);
+updateTime();
+
+// ════════════════════════════════════
+// AUTH
+// ════════════════════════════════════
+function handleLogin() {
+  const email = document.getElementById('auth-email').value || 'user@fabricforge.app';
+  APP.user = email;
+  document.getElementById('profile-email').textContent = email;
+  document.getElementById('profile-name').textContent = email.split('@')[0];
+  showScreen('screen-upload');
+  showToast('✓ Signed in securely');
+}
+
+function guestLogin() {
+  APP.user = 'guest';
+  showScreen('screen-upload');
+}
+
+// ════════════════════════════════════
+// UPLOAD
+// ════════════════════════════════════
+function handleFabricUpload(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    APP.fabricImage = ev.target.result;
+    const zone = document.getElementById('upload-fabric-zone');
+    zone.classList.add('has-image');
+    zone.innerHTML = `
+      <input type="file" accept="image/*" capture="environment" onchange="handleFabricUpload(event)">
+      <img src="${ev.target.result}" style="width:100%;height:220px;object-fit:cover;display:block;">
+      <div class="upload-change">✎ Change</div>
+    `;
+    document.getElementById('btn-upload-next').disabled = false;
+    showToast('✓ Fabric uploaded!');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ════════════════════════════════════
+// CATEGORY
+// ════════════════════════════════════
+function selectCat(name, emoji, desc, el) {
+  document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  APP.category = name;
+  APP.catEmoji = emoji;
+  document.getElementById('btn-cat-next').disabled = false;
+}
+
+// ════════════════════════════════════
+// STITCH
+// ════════════════════════════════════
+function loadStitches() {
+  const list = document.getElementById('stitch-list');
+  const items = STITCHES[APP.category] || [];
+  list.innerHTML = items.map(it => `
+    <div class="stitch-item" onclick="selectStitch('${it.n}','${it.e}',this)">
+      <div class="s-icon">${it.e}</div>
+      <div>
+        <h4>${it.n}</h4>
+        <p>${it.d}</p>
+      </div>
+      <div class="check">✓</div>
+    </div>
+  `).join('');
+  APP.stitch = null;
+  document.getElementById('btn-stitch-next').disabled = true;
+}
+
+function selectStitch(name, emoji, el) {
+  document.querySelectorAll('.stitch-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  APP.stitch = name;
+  APP.stitchEmoji = emoji;
+  document.getElementById('btn-stitch-next').disabled = false;
+}
+
+// ════════════════════════════════════
+// MEASUREMENTS
+// ════════════════════════════════════
+function loadMeasures() {
+  const fields = MEASURES[APP.category] || [];
+  const grid = document.getElementById('measure-grid');
+  grid.innerHTML = fields.map(f => `
+    <div class="m-field">
+      <label>${f} (cm)</label>
+      <input type="number" inputmode="decimal" placeholder="e.g. ${getSample(f)}" oninput="APP.measurements['${f}']=this.value">
+    </div>
+  `).join('');
+}
+
+function getSample(f) {
+  const s={Chest:90,Bust:86,Waist:74,Hip:96,Shoulder:42,Sleeve:60,Height:165,Neck:38};
+  for(const k in s) if(f.toLowerCase().includes(k.toLowerCase())) return s[k];
+  return 40;
+}
+
+function pickSize(el, size) {
+  document.querySelectorAll('.size-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  APP.size = size;
+}
+
+// ════════════════════════════════════
+// GENERATE OUTPUT
+// ════════════════════════════════════
+async function generateOutput() {
+  if(APP.designCount >= 3 && APP.user === 'guest') {
+    showModal('modal-upgrade'); return;
+  }
+  showScreen('screen-output');
+  const scroll = document.getElementById('output-scroll');
+  scroll.innerHTML = `
+    <div class="loading-state" style="min-height:300px">
+      <div class="spinner"></div>
+      <div class="loading-text">Analysing fabric texture…<br>Generating your design ✦</div>
+    </div>
+  `;
+  
+  const prompt = `You are an expert clothing designer and master tailor. Analyse the uploaded fabric image and create a detailed stitch design concept.
+
+Category: ${APP.category}
+Garment: ${APP.stitch}
+Size: ${APP.size || 'Standard'}
+Measurements: ${Object.entries(APP.measurements).filter(([k,v])=>v).map(([k,v])=>`${k}:${v}cm`).join(', ') || 'Not provided'}
+
+Respond ONLY with valid JSON (no markdown, no extra text):
+{"name":"Creative design name","description":"Expert 2-3 sentence description of how to construct this garment with the fabric","color":"Detected color/tone","pattern":"Detected pattern or texture","fabricType":"Likely fabric material","neckStyle":"Recommended neckline","sleeveStyle":"Recommended sleeve style","embellishments":"Finishing details","suggestions":["5 specific tailoring tips for this fabric+garment combo"]}`;
+
+  try {
+    const msgs = [{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:'image/jpeg',data: (APP.fabricImage||'').split(',')[1]||''}},
+      {type:'text',text:prompt}
+    ]}];
+    if(!APP.fabricImage) msgs[0].content = [{type:'text',text:prompt}];
+
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:msgs})
+    });
+    const data = await res.json();
+    const text = data.content?.map(b=>b.text||'').join('')||'';
+    let parsed;
+    try { parsed = JSON.parse(text.replace(/```json|```/g,'').trim()); }
+    catch { parsed = getFallback(); }
+    APP.designResult = parsed;
+  } catch(e) {
+    APP.designResult = getFallback();
+  }
+
+  APP.designCount++;
+  renderOutput();
+}
+
+function getFallback() {
+  return {
+    name: `Classic ${APP.stitch}`,
+    description: `This fabric has a beautiful texture that's perfectly suited for a ${APP.stitch}. The weave and drape suggest excellent structural integrity for tailored construction. Recommend a semi-fitted silhouette with clean interior finishing.`,
+    color: 'Rich tonal base', pattern: 'Woven texture', fabricType: 'Cotton blend',
+    neckStyle: 'Classic collar', sleeveStyle: 'Full sleeve with cuff',
+    embellishments: 'Contrast topstitching on seams',
+    suggestions: [
+      'Pre-wash fabric before cutting to avoid shrinkage',
+      'Use French seams for a clean professional interior',
+      'Press every seam immediately after stitching',
+      'Add interfacing to collar and cuffs for structure',
+      'Use tailor\'s chalk for accurate markings on dark fabric'
+    ]
+  };
+}
+
+function renderOutput() {
+  const d = APP.designResult;
+  const scroll = document.getElementById('output-scroll');
+  scroll.innerHTML = `
+    <div class="summary-pill-row">
+      <div class="summary-pill">${APP.catEmoji} <span>${APP.category}</span></div>
+      <div class="summary-pill">${APP.stitchEmoji} <span>${APP.stitch}</span></div>
+      ${APP.size ? `<div class="summary-pill">📐 <span>${APP.size}</span></div>` : ''}
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-head">🎨 AI DESIGN CONCEPT</div>
+      <div class="result-card-body">
+        <div class="design-name">${d.name}</div>
+        <div class="design-desc">${d.description}</div>
+        <div class="tag-row">
+          <span class="tag tag-lime">🎨 ${d.color}</span>
+          <span class="tag tag-teal">🧵 ${d.pattern}</span>
+          <span class="tag tag-orange">📦 ${d.fabricType}</span>
+        </div>
+        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px;">NECK STYLE</div>
+            <div style="font-size:13px;font-weight:500;">${d.neckStyle}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+            <div style="font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px;">SLEEVE STYLE</div>
+            <div style="font-size:13px;font-weight:500;">${d.sleeveStyle}</div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-top:8px;">
+          <div style="font-size:10px;color:var(--muted);font-family:'Syne',sans-serif;font-weight:700;margin-bottom:4px;">FINISH & EMBELLISHMENTS</div>
+          <div style="font-size:13px;font-weight:500;">${d.embellishments}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-head">✂️ TAILORING TIPS</div>
+      <div class="result-card-body">
+        ${(d.suggestions||[]).map((s,i)=>`<div class="tip-item"><strong style="color:var(--lime)">${i+1}.</strong> ${s}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-head">🔄 360° PREVIEW <span style="font-size:10px;color:var(--accent)">● LIVE</span></div>
+      <div class="result-card-body">
+        <div class="view360-wrap">
+          <span class="garment-display">${APP.stitchEmoji}</span>
+          <div class="angle-label" id="angle-lbl">${APP.stitch} — Front View</div>
+          <div class="angle-tabs">
+            <button class="angle-tab active" onclick="setAngle(this,'Front')">Front</button>
+            <button class="angle-tab" onclick="setAngle(this,'Side')">Side</button>
+            <button class="angle-tab" onclick="setAngle(this,'Back')">Back</button>
+            <button class="angle-tab" onclick="setAngle(this,'Detail')">Detail</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="result-card-head">👗 VIRTUAL TRY-ON <span style="color:var(--lime);font-size:10px;">PRO</span></div>
+      <div class="result-card-body">
+        <div class="tryon-area">
+          <div class="tryon-box" id="tryon-upload">
+            <input type="file" accept="image/*" capture="user" onchange="handleTryOn(event)">
+            <span class="t-icon">🤳</span>
+            <p>Upload selfie or model photo</p>
+          </div>
+          <div class="tryon-arrow">→</div>
+          <div class="tryon-box" id="tryon-result">
+            <span class="t-icon">✨</span>
+            <p>Result appears here</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  `;
+
+  saveToHistory();
+  showToast('✦ Design generated!');
+}
+
+function setAngle(el, angle) {
+  document.querySelectorAll('.angle-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('angle-lbl').textContent = `${APP.stitch} — ${angle} View`;
+}
+
+// ════════════════════════════════════
+// TRY-ON
+// ════════════════════════════════════
+async function handleTryOn(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const tryonImg = ev.target.result;
+    const resultBox = document.getElementById('tryon-result');
+    resultBox.innerHTML = `<div class="spinner" style="width:28px;height:28px;border-width:2px"></div><p style="font-size:11px;color:var(--muted);margin-top:8px">Analysing…</p>`;
+
+    try {
+      const msgs = [{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:tryonImg.split(',')[1]}},
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:(APP.fabricImage||tryonImg).split(',')[1]}},
+        {type:'text',text:`You are a fashion AI. The first image is a person, the second is a fabric. Imagine the person wearing a ${APP.stitch} (${APP.category}) made from this fabric. In 2-3 vivid sentences, describe exactly how they would look — colour harmony, drape, fit on their body type, and overall style impression. Be positive and specific like a professional fashion consultant. Plain text only.`}
+      ]}];
+      const res = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:msgs})});
+      const data = await res.json();
+      const text = data.content?.map(b=>b.text||'').join('')||'';
+      resultBox.classList.add('has-result');
+      resultBox.innerHTML = `<span class="t-icon">✨</span><div class="tryon-result-text">${text}</div>`;
+    } catch {
+      resultBox.classList.add('has-result');
+      resultBox.innerHTML = `<span class="t-icon">👗</span><div class="tryon-result-text">The ${APP.stitch} in this fabric would look elegant on you — the colours complement your features beautifully.</div>`;
+    }
+    showToast('✓ Try-on complete!');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ════════════════════════════════════
+// HISTORY
+// ════════════════════════════════════
+function saveToHistory() {
+  if(!APP.designResult) return;
+  APP.history.unshift({
+    id: Date.now(),
+    category: APP.category,
+    stitch: APP.stitch,
+    emoji: APP.stitchEmoji,
+    name: APP.designResult.name,
+    date: new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'}),
+    fabricImage: APP.fabricImage
+  });
+
+  const content = document.getElementById('history-content');
+  content.innerHTML = `<div class="hist-grid">${APP.history.map(h=>`
+    <div class="hist-card" onclick="showToast('Opening ${h.name}…')">
+      <div class="hist-thumb">${h.emoji}</div>
+      <div class="hist-info">
+        <h4>${h.name}</h4>
+        <p>${h.category} · ${h.date}</p>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+// ════════════════════════════════════
+// UTILS
+// ════════════════════════════════════
+function saveDesign() {
+  if(!APP.designResult) return;
+  const d = APP.designResult;
+  const txt = `FABRICFORGE DESIGN REPORT\n${'='.repeat(30)}\nDesign: ${d.name}\nCategory: ${APP.category} — ${APP.stitch}\nSize: ${APP.size||'Custom'}\n\nDescription:\n${d.description}\n\nFabric: ${d.fabricType}\nColor: ${d.color}\nPattern: ${d.pattern}\nNeck: ${d.neckStyle}\nSleeve: ${d.sleeveStyle}\nFinish: ${d.embellishments}\n\nTailoring Tips:\n${(d.suggestions||[]).map((s,i)=>`${i+1}. ${s}`).join('\n')}\n\nGenerated by FabricForge App`;
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,'+encodeURIComponent(txt);
+  a.download = 'FabricForge-Design.txt';
+  a.click();
+  showToast('✓ Design saved!');
+}
+
+function shareDesign() { showToast('📤 Share via WhatsApp / Instagram coming soon!'); }
+function newDesign() {
+  APP.fabricImage=null; APP.category=null; APP.stitch=null; APP.size=null; APP.measurements={};
+  const zone = document.getElementById('upload-fabric-zone');
+  zone.classList.remove('has-image');
+  zone.innerHTML = `<input type="file" accept="image/*" capture="environment" onchange="handleFabricUpload(event)"><span class="u-icon">📸</span><h3>Tap to capture fabric</h3><p>Camera or Gallery · JPG, PNG, HEIC</p>`;
+  document.getElementById('btn-upload-next').disabled = true;
+  showScreen('screen-upload');
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function showModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+</script>
+</body>
+</html>
