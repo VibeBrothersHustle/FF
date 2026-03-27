@@ -8,6 +8,35 @@
 <meta name="theme-color" content="#0D0D0D">
 <title>FabricForge — AI Stitch Designer</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- All app functions declared early so inline onclick attrs always find them -->
+<script>
+// Proxy stubs — real implementations below replace these once DOM is ready,
+// but these stubs prevent "X is not defined" if the browser fires a click
+// before the bottom <script> has parsed (e.g. Cloudflare injection delay).
+var _ready = false;
+var _queue = [];
+function _stub(name){ return function(){ if(_ready){ window[name].apply(this,arguments); } else { _queue.push([name,Array.from(arguments)]); } }; }
+window.showScreen   = _stub('showScreen');
+window.guestLogin   = _stub('guestLogin');
+window.handleLogin  = _stub('handleLogin');
+window.openPicker   = _stub('openPicker');
+window.closePicker  = _stub('closePicker');
+window.selectCat    = _stub('selectCat');
+window.loadStitches = _stub('loadStitches');
+window.selectStitch = _stub('selectStitch');
+window.loadMeasures = _stub('loadMeasures');
+window.pickSize     = _stub('pickSize');
+window.generateOutput = _stub('generateOutput');
+window.setAngle     = _stub('setAngle');
+window.saveDesign   = _stub('saveDesign');
+window.shareDesign  = _stub('shareDesign');
+window.newDesign    = _stub('newDesign');
+window.showToast    = _stub('showToast');
+window.showModal    = _stub('showModal');
+window.closeModal   = _stub('closeModal');
+window.activateNav  = _stub('activateNav');
+</script>
+</script>
 <style>
 /* ═══════════════════════════════════════
    TOKENS & RESET
@@ -1233,7 +1262,7 @@ html, body {
   </div>
 </div>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script>
 // ════════════════════════════════════
 // STATE
 // ════════════════════════════════════
@@ -1752,4 +1781,44 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTime
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function showModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ════════════════════════════════════
+// WIRE UP REAL FUNCTIONS & FLUSH QUEUE
+// ════════════════════════════════════
+// Override the stubs with the real implementations
+window.showScreen   = showScreen;
+window.guestLogin   = guestLogin;
+window.handleLogin  = handleLogin;
+window.openPicker   = openPicker;
+window.closePicker  = closePicker;
+window.selectCat    = selectCat;
+window.loadStitches = loadStitches;
+window.selectStitch = selectStitch;
+window.loadMeasures = loadMeasures;
+window.pickSize     = pickSize;
+window.generateOutput = generateOutput;
+window.setAngle     = setAngle;
+window.saveDesign   = saveDesign;
+window.shareDesign  = shareDesign;
+window.newDesign    = newDesign;
+window.showToast    = showToast;
+window.showModal    = showModal;
+window.closeModal   = closeModal;
+window.activateNav  = activateNav;
+
+// Mark ready and flush any queued calls
+_ready = true;
+_queue.forEach(([name, args]) => { try { window[name].apply(null, args); } catch(e){} });
+_queue = [];
+
+// Init time display
+updateTime();
+setInterval(updateTime, 30000);
+</script>
+</body>
+</html>
